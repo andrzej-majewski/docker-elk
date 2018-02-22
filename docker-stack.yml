@@ -1,0 +1,56 @@
+version: '3.2'
+
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.2.1
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:6.2.1
+    volumes:
+      - ./kibana/config/:/usr/share/kibana/config:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  fluentd:
+    image: dockerelk_fluentd:latest
+    volumes:
+      - ./fluentd/conf:/fluentd/etc
+    depends_on:
+      - elasticsearch
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - elk
+
+  samplejms:
+    image: ikasan-boot-jms:2.0.0-rc3
+    ports:
+      - "8080:8080"
+    networks:
+      - elk
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        tag: samplejms
+
+
+networks:
+
+  elk:
+    driver: overlay
